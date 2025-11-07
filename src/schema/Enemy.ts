@@ -1,5 +1,6 @@
 import { MapSchema, Schema, type } from "@colyseus/schema";
 import { randomUUID } from "crypto";
+import { Position } from "../utils/types";
 
 export class Enemy extends Schema {
     @type("string") id: string;
@@ -7,10 +8,15 @@ export class Enemy extends Schema {
     @type("number") y: number;
     @type("number") state: number;
 
-    constructor() {
+    constructor(position: Position) {
         super();
         this.id = randomUUID();
+
+        this.x = position.x;
+        this.y = position.y;
     }
 
-    update() {}
+    update() {
+        console.log();
+    }
 }
