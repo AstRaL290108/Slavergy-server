@@ -10,17 +10,19 @@ export class Bullet extends Schema {
     @type("number") x: number;
     @type("number") y: number;
     @type("number") state: number;
+    @type("number") type: number; 
 
     @type("number") speedX: number;
     @type("number") speedY: number;
-    @type("number") speedMain: number = 150;
+    @type("number") speedMain: number = 50;
 
     @type("boolean") isDestroy: boolean = false;
 
-    constructor(playerId: string, x: number, y: number, nav: Position) {
+    constructor(playerId: string, x: number, y: number, nav: Position, type: number) {
         super();
         this.id = randomUUID();
         this.playerId = playerId;
+        this.type = type;
         
         this.speedX = nav.x * this.speedMain / Math.sqrt(nav.x**2 + nav.y**2);
         this.speedY = nav.y * this.speedMain / Math.sqrt(nav.x**2 + nav.y**2);
@@ -49,12 +51,15 @@ export class Bullet extends Schema {
     checkPlayerCollision(room: Room): boolean {
         if (this.isDestroy) return false;
         const playerInitiator: Player = room.state.players.get(this.playerId);
+        if (!playerInitiator) return true;
 
         const keys = room.state.players.keys();
         for (let key of keys) {
             const player: Player = room.state.players.get(key);
-            const range = Math.sqrt( (player.x - this.x)**2 + (player.y - this.y)**2 );
-            if (range <= 75 && key != this.playerId) {
+            if (playerInitiator.color == player.color) continue;
+
+            const range = Math.sqrt( (player.x - this.x)**2 + (player.y - this.y)**2 ) - (50+25);
+            if (range <= 0 && key != this.playerId) {
                 player.getDamage(room, playerInitiator.states.damage*1.5);
                 this.destroy(room);
                 return false;

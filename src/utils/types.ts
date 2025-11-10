@@ -1,7 +1,6 @@
 export type playerConnectOptions = {
     name: string,
-    color: number,
-    class_: number
+    color: number
 }
 
 export type Position = {

@@ -13,6 +13,7 @@ export class GameRoom extends Room<GameRoomState> {
 
     updatePosition(client: Client, newPos: Position&{ angle: number }) {
         const player: Player = this.state.players.get(client.sessionId);
+        console.log(newPos);
         player.x = newPos.x;
         player.y = newPos.y;
         player.angle = newPos.angle;
@@ -20,16 +21,9 @@ export class GameRoom extends Room<GameRoomState> {
         // console.log(`${player.name} new position`, player.x, player.y);
     }
 
-    attack(client: Client, victimId: string) {
-        const playerInitiator: Player = this.state.players.get(client.sessionId);
-        const playerVictim: Player = this.state.players.get(victimId);
-
-        const radius = Math.sqrt( 
-            (playerInitiator.x - playerVictim.x)**2 +
-            (playerInitiator.y - playerVictim.y)**2 );
-
-        if (radius > playerInitiator.states.attackRange) return;
-        playerVictim.getDamage(this, playerInitiator.states.damage);
+    attack(client: Client, { nav, type }: {nav: Position, type: number}) {
+        if (type == 1) this.spawnFireBullet(client, nav);
+        else if (type == 2) this.spawnIceBullet(client, nav);
     }
     chargePlayers() {
         this.state.players.forEach((player, key) => {
@@ -45,16 +39,37 @@ export class GameRoom extends Room<GameRoomState> {
         });
     }
 
-    spawnBullet(client: Client, nav: Position) {
+    spawnFireBullet(client: Client, nav: Position) {
         const player: Player = this.state.players.get(client.sessionId);
         if (player.states.mana < 50) return;
 
-        const bullet = new Bullet(client.sessionId, player.x, player.y, nav);
+        const bullet = new Bullet(client.sessionId, player.x, player.y, nav, 1);
         this.state.bullets.set(bullet.id, bullet);
         this.clock.setInterval(() => {bullet.update(this)}, 10);
 
         player.states.mana -= 50;
-        this.broadcast("bullets:spawn", {spawnPos: {x: bullet.x, y: bullet.y}, uuid: bullet.id});
+        this.broadcast("bullets:spawn", {spawnPos: {x: bullet.x, y: bullet.y}, uuid: bullet.id, type: 1});
+    }
+    spawnIceBullet(client: Client, nav: Position) {
+        const player: Player = this.state.players.get(client.sessionId);
+        if (player.states.mana < 100) return;
+
+        const bullet1 = new Bullet(client.sessionId, player.x, player.y, nav, 2);
+        this.state.bullets.set(bullet1.id, bullet1);
+        this.clock.setInterval(() => {bullet1.update(this)}, 10);
+
+        const bullet2 = new Bullet(client.sessionId, player.x, player.y, { x: nav.x + 50, y: nav.y + 50 }, 2);
+        this.state.bullets.set(bullet2.id, bullet2);
+        this.clock.setInterval(() => {bullet2.update(this)}, 10);
+
+        const bullet3 = new Bullet(client.sessionId, player.x, player.y, { x: nav.x - 50, y: nav.y - 50 }, 2);
+        this.state.bullets.set(bullet3.id, bullet3);
+        this.clock.setInterval(() => {bullet3.update(this)}, 10);
+
+        player.states.mana -= 100;
+        this.broadcast("bullets:spawn", {spawnPos: {x: bullet1.x, y: bullet1.y}, uuid: bullet1.id, type: 2});
+        this.broadcast("bullets:spawn", {spawnPos: {x: bullet2.x, y: bullet2.y}, uuid: bullet2.id, type: 2});
+        this.broadcast("bullets:spawn", {spawnPos: {x: bullet3.x, y: bullet3.y}, uuid: bullet3.id, type: 2});
     }
 
     printMessage(client: Client, message: string) {
@@ -66,11 +81,7 @@ export class GameRoom extends Room<GameRoomState> {
         // console.log(`Room ${this.roomId} created!`);
         this.onMessage("player:update-position", this.updatePosition.bind(this));
         this.onMessage("player:attack", this.attack.bind(this));
-        this.onMessage("player:spawn-bullet", this.spawnBullet.bind(this));
         this.onMessage("player:message", this.printMessage.bind(this));
-
-        const testEnemy = new Enemy({ x: 500, y: 450 });
-        this.state.enemyBots.set(testEnemy.id, testEnemy);
 
         this.clock.setInterval(() => {
             this.chargePlayers();
